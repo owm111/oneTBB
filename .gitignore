@@ -60,3 +60,6 @@ CMakeSettings.json
 .tags
 .ctags
 
+
+# Demo
+!demo/Makefile

@@ -23,6 +23,8 @@
 #include "misc.h"
 #include "itt_notify.h"
 
+#include <iostream>
+
 namespace tbb {
 namespace detail {
 namespace r1 {
@@ -112,6 +114,7 @@ void initialize_cache_aligned_allocator();
 
 //! Performs thread-safe lazy one-time general TBB initialization.
 void DoOneTimeInitialization() {
+    std::cerr << __FILE__ << ":" << __LINE__ << ": My version is running!!!!!!\n";
     __TBB_InitOnce::lock();
     // No fence required for load of InitializationDone, because we are inside a critical section.
     if( !__TBB_InitOnce::InitializationDone ) {

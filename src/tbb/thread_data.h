@@ -29,6 +29,8 @@
 #include "misc.h" // FastRandom
 #include "small_object_pool_impl.h"
 
+#include "oneapi/tbb/null_mutex.h"
+
 #include <atomic>
 
 namespace tbb {
@@ -54,7 +56,7 @@ public:
     std::atomic<std::uintptr_t> epoch{};
 
     //! Mutex protecting access to the list of task group contexts.
-    d1::mutex m_mutex{};
+    tbb::null_mutex m_mutex{};
 
     void destroy() {
         this->~context_list();
@@ -62,7 +64,7 @@ public:
     }
 
     void remove(intrusive_list_node& val) {
-        mutex::scoped_lock lock(m_mutex);
+        null_mutex::scoped_lock lock(m_mutex);
 
         intrusive_list<intrusive_list_node>::remove(val);
 
@@ -73,13 +75,13 @@ public:
     }
 
     void push_front(intrusive_list_node& val) {
-        mutex::scoped_lock lock(m_mutex);
+        null_mutex::scoped_lock lock(m_mutex);
 
         intrusive_list<intrusive_list_node>::push_front(val);
     }
 
     void orphan() {
-        mutex::scoped_lock lock(m_mutex);
+        null_mutex::scoped_lock lock(m_mutex);
 
         orphaned = true;
         if (empty()) {

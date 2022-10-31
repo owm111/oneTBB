@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+add_compile_definitions(TBB_USE_DEBUG=1)
+add_compile_definitions(TBB_USE_ASSERT=1)
+add_compile_definitions(TBB_USE_PROFILING_TOOLS=1)
+
 cmake_minimum_required(VERSION 3.1)
 
 # Enable CMake policies

@@ -26,10 +26,12 @@
 
 #include "oneapi/tbb/detail/_utils.h"
 #include "oneapi/tbb/cache_aligned_allocator.h"
-#include "oneapi/tbb/mutex.h"
+#include "oneapi/tbb/null_mutex.h"
 
 #include "scheduler_common.h"
 #include "misc.h" // for FastRandom
+
+#include <iostream>
 
 #include <deque>
 #include <climits>
@@ -119,7 +121,7 @@ struct preceding_lane_selector : lane_selector_base {
 template<task_stream_accessor_type accessor>
 class task_stream_accessor : no_copy {
 protected:
-    using lane_t = queue_and_mutex <d1::task*, mutex>;
+    using lane_t = queue_and_mutex <d1::task*, null_mutex>;
     d1::task* get_item( lane_t::queue_base_t& queue ) {
         d1::task* result = queue.front();
         queue.pop_front();
@@ -130,7 +132,7 @@ protected:
 template<>
 class task_stream_accessor< back_nonnull_accessor > : no_copy {
 protected:
-    using lane_t = queue_and_mutex <d1::task*, mutex>;
+    using lane_t = queue_and_mutex <d1::task*, null_mutex>;
     d1::task* get_item( lane_t::queue_base_t& queue ) {
         d1::task* result = nullptr;
         __TBB_ASSERT(!queue.empty(), nullptr);
@@ -155,6 +157,7 @@ public:
     task_stream() = default;
 
     void initialize( unsigned n_lanes ) {
+	std::cerr << __FILE__ << ":" << __LINE__ << ": initialize task stream\n";
         const unsigned max_lanes = sizeof(population_t) * CHAR_BIT;
 
         N = n_lanes >= max_lanes ? max_lanes : n_lanes > 2 ? 1 << (tbb::detail::log2(n_lanes - 1) + 1) : 2;
@@ -168,6 +171,7 @@ public:
     }
 
     ~task_stream() {
+	std::cerr << __FILE__ << ":" << __LINE__ << ": deallocating task stream\n";
         if (lanes) {
             for (unsigned i = 0; i < N; ++i) {
                 lanes[i].~lane_t();
@@ -179,6 +183,7 @@ public:
     //! Push a task into a lane. Lane selection is performed by passed functor.
     template<typename lane_selector_t>
     void push(d1::task* source, const lane_selector_t& next_lane ) {
+	std::cerr << __FILE__ << ":" << __LINE__ << ": task stream push\n";
         bool succeed = false;
         unsigned lane = 0;
         do {
@@ -191,6 +196,7 @@ public:
     //! updated inside lane selector.
     template<typename lane_selector_t>
     d1::task* pop( const lane_selector_t& next_lane ) {
+	std::cerr << __FILE__ << ":" << __LINE__ << ": task stream pop\n";
         d1::task* popped = nullptr;
         unsigned lane = 0;
         do {
@@ -202,13 +208,15 @@ public:
 
     //! Try finding and popping a related task.
     d1::task* pop_specific( unsigned& last_used_lane, isolation_type isolation ) {
+	std::cerr << __FILE__ << ":" << __LINE__ << ": task stream pop_specific\n";
         d1::task* result = nullptr;
         // Lane selection is round-robin in backward direction.
         unsigned idx = last_used_lane & (N-1);
         do {
             if( is_bit_set( population.load(std::memory_order_relaxed), idx ) ) {
                 lane_t& lane = lanes[idx];
-                mutex::scoped_lock lock;
+		std::cerr << __FILE__ << ":" << __LINE__ << ": acquiring scoped lock\n";
+                null_mutex::scoped_lock lock;
                 if( lock.try_acquire(lane.my_mutex) && !lane.my_queue.empty() ) {
                     result = look_specific( lane.my_queue, isolation );
                     if( lane.my_queue.empty() )
@@ -231,7 +239,8 @@ public:
 private:
     //! Returns true on successful push, otherwise - false.
     bool try_push(d1::task* source, unsigned lane_idx ) {
-        mutex::scoped_lock lock;
+	std::cerr << __FILE__ << ":" << __LINE__ << ": acquiring scoped lock\n";
+        null_mutex::scoped_lock lock;
         if( lock.try_acquire( lanes[lane_idx].my_mutex ) ) {
             lanes[lane_idx].my_queue.push_back( source );
             set_one_bit( population, lane_idx ); // TODO: avoid atomic op if the bit is already set
@@ -246,7 +255,8 @@ private:
             return nullptr;
         d1::task* result = nullptr;
         lane_t& lane = lanes[lane_idx];
-        mutex::scoped_lock lock;
+	std::cerr << __FILE__ << ":" << __LINE__ << ": acquiring scoped lock\n";
+        null_mutex::scoped_lock lock;
         if( lock.try_acquire( lane.my_mutex ) && !lane.my_queue.empty() ) {
             result = this->get_item( lane.my_queue );
             if( lane.my_queue.empty() )
@@ -258,6 +268,7 @@ private:
     // TODO: unify '*_specific' logic with 'pop' methods above
     d1::task* look_specific( typename lane_t::queue_base_t& queue, isolation_type isolation ) {
         __TBB_ASSERT( !queue.empty(), nullptr);
+	std::cerr << __FILE__ << ":" << __LINE__ << ": task stream look_specific\n";
         // TODO: add a worst-case performance test and consider an alternative container with better
         // performance for isolation search.
         typename lane_t::queue_base_t::iterator curr = queue.end();

@@ -27,6 +27,7 @@
 #include "oneapi/tbb/task_group.h"
 
 #include <atomic>
+#include <iostream>
 
 #if defined(_MSC_VER) && defined(_Wp64)
     // Workaround for overzealous compiler warnings in /Wp64 mode
@@ -172,6 +173,7 @@ private:
     static void enforce (Pred pred, const char* msg) {
         suppress_unused_warning(pred, msg);
 #if TBB_USE_ASSERT
+	std::cerr << __FILE__ << ":" << __LINE__ << ": locking the market mutex in enforce\n";
         global_market_mutex_type::scoped_lock lock(theMarketMutex);
         __TBB_ASSERT(pred(), msg);
 #endif
@@ -286,6 +288,7 @@ public:
     std::atomic<thread_data*> my_workers[1];
 
     static unsigned max_num_workers() {
+	std::cerr << __FILE__ << ":" << __LINE__ << ": locking the market mutex in max_num_workers\n";
         global_market_mutex_type::scoped_lock lock( theMarketMutex );
         return theMarket? theMarket->my_num_workers_hard_limit : 0;
     }

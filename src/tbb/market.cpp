@@ -125,6 +125,7 @@ bool market::add_ref_unsafe( global_market_mutex_type::scoped_lock& lock, bool i
 }
 
 market& market::global_market(bool is_public, unsigned workers_requested, std::size_t stack_size) {
+    std::cerr << __FILE__ << ":" << __LINE__ << ": locking the market mutex in market::global_market\n";
     global_market_mutex_type::scoped_lock lock( theMarketMutex );
     if( !market::add_ref_unsafe(lock, is_public, workers_requested, stack_size) ) {
         // TODO: A lot is done under theMarketMutex locked. Can anything be moved out?
@@ -175,6 +176,7 @@ bool market::release ( bool is_public, bool blocking_terminate ) {
     market::enforce([this] { return theMarket == this; }, "Global market instance was destroyed prematurely?");
     bool do_release = false;
     {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": locking the market mutex in market::global_market\n";
         global_market_mutex_type::scoped_lock lock( theMarketMutex );
         if ( blocking_terminate ) {
             __TBB_ASSERT( is_public, "Only an object with a public reference can request the blocking terminate" );
@@ -235,6 +237,7 @@ void market::set_active_num_workers ( unsigned soft_limit ) {
     market *m;
 
     {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": locking the market mutex in market::set_active_num_workers\n";
         global_market_mutex_type::scoped_lock lock( theMarketMutex );
         if ( !theMarket )
             return; // actual value will be used at market creation
@@ -247,6 +250,7 @@ void market::set_active_num_workers ( unsigned soft_limit ) {
 
     int delta = 0;
     {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": locking the arena list mutex in market::set_active_num_workers\n";
         arenas_list_mutex_type::scoped_lock lock( m->my_arenas_list_mutex );
         __TBB_ASSERT(soft_limit <= m->my_num_workers_hard_limit, nullptr);
 
@@ -299,6 +303,7 @@ arena* market::create_arena ( int num_slots, int num_reserved_slots, unsigned ar
     market &m = global_market( /*is_public=*/true, num_slots-num_reserved_slots, stack_size );
     arena& a = arena::allocate_arena( m, num_slots, num_reserved_slots, arena_priority_level );
     // Add newly created arena into the existing market's list.
+    std::cerr << __FILE__ << ":" << __LINE__ << ": locking the arena list mutex in market::create_arena\n";
     arenas_list_mutex_type::scoped_lock lock(m.my_arenas_list_mutex);
     m.insert_arena_into_list(a);
     return &a;
@@ -378,6 +383,7 @@ arena* market::arena_in_need ( arena_list_type* arenas, arena* hint ) {
 arena* market::arena_in_need(arena* prev) {
     if (my_total_demand.load(std::memory_order_acquire) <= 0)
         return nullptr;
+    std::cerr << __FILE__ << ":" << __LINE__ << ": locking the arena list mutex in market::arena_in_need\n";
     arenas_list_mutex_type::scoped_lock lock(my_arenas_list_mutex, /*is_writer=*/false);
     // TODO: introduce three state response: alive, not_alive, no_market_arenas
     if ( is_arena_alive(prev) )
@@ -468,6 +474,7 @@ void market::enable_mandatory_concurrency_impl ( arena *a ) {
 void market::enable_mandatory_concurrency ( arena *a ) {
     int delta = 0;
     {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": locking the arena list mutex in market::enable_mandatory_concurrency\n";
         arenas_list_mutex_type::scoped_lock lock(my_arenas_list_mutex);
         if (my_num_workers_soft_limit.load(std::memory_order_relaxed) != 0 ||
             a->my_global_concurrency_mode.load(std::memory_order_relaxed))
@@ -492,6 +499,7 @@ void market::disable_mandatory_concurrency_impl(arena* a) {
 void market::mandatory_concurrency_disable ( arena *a ) {
     int delta = 0;
     {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": locking the arena list mutex in market::mandatory_concurrency_disable\n";
         arenas_list_mutex_type::scoped_lock lock(my_arenas_list_mutex);
         if (!a->my_global_concurrency_mode.load(std::memory_order_relaxed))
             return;
@@ -517,6 +525,7 @@ void market::adjust_demand ( arena& a, int delta, bool mandatory ) {
     }
     int target_epoch{};
     {
+        std::cerr << __FILE__ << ":" << __LINE__ << ": locking the arena list mutex in market::adjust_demand\n";
         arenas_list_mutex_type::scoped_lock lock(my_arenas_list_mutex);
         __TBB_ASSERT(theMarket != nullptr, "market instance was destroyed prematurely?");
 #if __TBB_ENQUEUE_ENFORCED_CONCURRENCY
@@ -630,11 +639,13 @@ void market::acknowledge_close_connection() {
 }
 
 void market::add_external_thread(thread_data& td) {
+    std::cerr << __FILE__ << ":" << __LINE__ << ": locking the context state propogation mutex in market::add_external_thread\n";
     context_state_propagation_mutex_type::scoped_lock lock(the_context_state_propagation_mutex);
     my_masters.push_front(td);
 }
 
 void market::remove_external_thread(thread_data& td) {
+    std::cerr << __FILE__ << ":" << __LINE__ << ": locking the context state propogation mutex in market::add_external_thread\n";
     context_state_propagation_mutex_type::scoped_lock lock(the_context_state_propagation_mutex);
     my_masters.remove(td);
 }

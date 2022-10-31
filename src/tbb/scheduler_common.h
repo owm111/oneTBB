@@ -29,11 +29,12 @@
 #include "governor.h"
 
 #ifndef __TBB_SCHEDULER_MUTEX_TYPE
-#define __TBB_SCHEDULER_MUTEX_TYPE tbb::spin_mutex
+#define __TBB_SCHEDULER_MUTEX_TYPE tbb::null_mutex
 #endif
 // TODO: add conditional inclusion based on specified type
 #include "oneapi/tbb/spin_mutex.h"
 #include "oneapi/tbb/mutex.h"
+#include "oneapi/tbb/null_mutex.h"
 
 #if TBB_USE_ASSERT
 #include <atomic>
@@ -43,7 +44,7 @@
 #include <exception>
 
 //! Mutex type for global locks in the scheduler
-using scheduler_mutex_type = __TBB_SCHEDULER_MUTEX_TYPE;
+using scheduler_mutex_type = tbb::null_mutex;
 
 #if _MSC_VER && !defined(__INTEL_COMPILER)
     // Workaround for overzealous compiler warnings

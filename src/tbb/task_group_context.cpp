@@ -226,7 +226,7 @@ void task_group_context_impl::propagate_task_group_state(d1::task_group_context&
 
 template <typename T>
 void thread_data::propagate_task_group_state(std::atomic<T> d1::task_group_context::* mptr_state, d1::task_group_context& src, T new_state) {
-    mutex::scoped_lock lock(my_context_list->m_mutex);
+    null_mutex::scoped_lock lock(my_context_list->m_mutex);
     // Acquire fence is necessary to ensure that the subsequent node->my_next load
     // returned the correct value in case it was just inserted in another thread.
     // The fence also ensures visibility of the correct ctx.my_parent value.
