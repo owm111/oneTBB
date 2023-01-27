@@ -93,11 +93,9 @@ main(int argc, char *argv[])
 
 	}
 
-	std::istringstream input("40 96\n");
-
 	std::uint64_t fib_num;
 	unsigned nthread;
-	while (input >> fib_num >> nthread) {
+	while (std::cin >> fib_num >> nthread) {
 		oneapi::tbb::task_arena arena(nthread);
 		pinning_observer observer(arena);
 		for (int i = 0; i < tests; ++i) {
